@@ -18,6 +18,17 @@ var indexHTML embed.FS
 //go:embed static
 var staticFiles embed.FS
 
+var lastEffect = 0
+
+func randEffect() int {
+	effect := rand.Intn(5) + 1
+	if effect == lastEffect {
+		return randEffect()
+	}
+	lastEffect = effect
+	return effect
+}
+
 func main() {
 	port := flag.String("port", os.Getenv("PORT"), "port to serve on")
 	wledHost := flag.String("wled-host", os.Getenv("WLED_HOST"), "WLED host")
@@ -59,7 +70,7 @@ func main() {
 		}{Title: "hello", Response: path})
 	})
 	http.HandleFunc("/random", func(w http.ResponseWriter, req *http.Request) {
-		effect := rand.Intn(5) + 1
+		effect := randEffect()
 
 		obj := map[string]int{"ps": effect}
 		json, err := json.Marshal(obj)
