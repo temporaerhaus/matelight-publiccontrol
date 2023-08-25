@@ -18,11 +18,11 @@ var indexHTML embed.FS
 //go:embed static
 var staticFiles embed.FS
 
-var lastEffect = 0
+var lastEffect = 1
 
 func randEffect() int {
 	effect := rand.Intn(5) + 1
-	if effect == lastEffect {
+	if effect == lastEffect || effect == 1 {
 		return randEffect()
 	}
 	lastEffect = effect
@@ -32,6 +32,7 @@ func randEffect() int {
 func main() {
 	port := flag.String("port", os.Getenv("PORT"), "port to serve on")
 	wledHost := flag.String("wled-host", os.Getenv("WLED_HOST"), "WLED host")
+	effectTimeout := flag.Int("effect-timeout", 60*5, "effect timeout in seconds")
 	flag.Parse()
 	if *port == "" {
 		*port = "3000"
@@ -39,6 +40,10 @@ func main() {
 	if *wledHost == "" {
 		log.Fatal("WLED_HOST is required")
 	}
+
+	log.Println("Hello Matelight Public Control!")
+	log.Printf("- Talking to WLED at %s\n", *wledHost)
+	log.Printf("- Switching back to default effect after %d seconds\n", *effectTimeout)
 
 	// Note the call to ParseFS instead of Parse
 	t, err := template.ParseFS(indexHTML, "templates/index.html.tmpl")
@@ -72,7 +77,17 @@ func main() {
 	http.HandleFunc("/random", func(w http.ResponseWriter, req *http.Request) {
 		effect := randEffect()
 
-		obj := map[string]int{"ps": effect}
+		// use a single item playlist to switch back to the default effect after defined timeout
+		obj := map[string]interface{}{
+			"playlist": map[string]interface{}{
+				"ps":         []int{effect},
+				"dur":        []int{*effectTimeout * 10}, // in tenths of a second
+				"transition": 0,
+				"repeat":     1,
+				"end":        1, // default effect: 1
+			},
+		}
+
 		json, err := json.Marshal(obj)
 		if err != nil {
 			return
@@ -98,7 +113,7 @@ func main() {
 		w.WriteHeader(http.StatusFound)
 	})
 
-	log.Println("Listening on port", *port)
+	log.Println("- Listening on port", *port)
 	err = http.ListenAndServe(":"+*port, nil)
 	if err != nil {
 		log.Fatal(err)
