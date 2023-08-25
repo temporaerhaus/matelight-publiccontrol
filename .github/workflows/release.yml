@@ -21,6 +21,8 @@ jobs:
           compress: false
           name: matelight-publiccontrol
           dest: dist
+          # workaround for bug in go-cross-build
+          ldflags: '""' 
       - name: Upload build-artifacts
         uses: skx/github-action-publish-binaries@release-2.0
         env:
